@@ -288,8 +288,8 @@ module AuthenticationMixin
           [:unreachable, err]
         rescue MiqException::MiqInvalidCredentialsError => err
           [:invalid, err]
-        rescue MiqException::MiqEVMLoginError
-          [:invalid, "Login failed due to a bad username or password."]
+        rescue MiqException::MiqEVMLoginError => err
+          [:invalid, "Login failed: #{err.message}"]
         rescue => err
           [:error, err]
         end

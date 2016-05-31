@@ -3,7 +3,7 @@ require 'util/miq-exception'
 
 module OpenstackHandle
   class Handle
-    attr_accessor :username, :password, :address, :port, :api_version, :security_protocol, :connection_options
+    attr_accessor :username, :password, :address, :port, :api_version, :security_protocol, :connection_options, :region
     attr_reader :project_name
     attr_writer   :default_tenant_name
 
@@ -41,24 +41,29 @@ module OpenstackHandle
     end
 
     def self.raw_connect_try_ssl(username, password, address, port, service = "Compute", opts = nil, api_version = nil,
-                                 security_protocol = nil)
+                                 security_protocol = nil, region = nil)
       ssl_options = opts.delete(:ssl_options)
       try_connection(security_protocol, ssl_options) do |scheme, connection_options|
         auth_url = auth_url(address, port, scheme, api_version)
         opts[:connection_options] = (opts[:connection_options] || {}).merge(connection_options)
-        raw_connect(username, password, auth_url, service, opts)
+        raw_connect(username, password, auth_url, service, opts, region)
       end
     end
 
-    def self.raw_connect(username, password, auth_url, service = "Compute", extra_opts = nil)
+    def self.raw_connect(username, password, auth_url, service = "Compute", extra_opts = nil, region = nil)
       opts = {
         :provider                => 'OpenStack',
         :openstack_auth_url      => auth_url,
         :openstack_username      => username,
         :openstack_api_key       => password,
+        :openstack_region        => region,
         :openstack_endpoint_type => 'publicURL',
       }
       opts.merge!(extra_opts) if extra_opts
+
+
+      $fog_log.warn("MIQ(#{self.class.name}##{__method__}) fogfog.raw_connect.extra=#{extra_opts.inspect} ")
+      $fog_log.warn("MIQ(#{self.class.name}##{__method__}) fogfog.raw_connect.opts=#{opts.inspect} ")
 
       # Workaround for a bug in Fog
       # https://github.com/fog/fog/issues/3112
@@ -104,12 +109,13 @@ module OpenstackHandle
     end
 
     def initialize(username, password, address, port = nil, api_version = nil, security_protocol = nil,
-                   extra_options = {})
+                   extra_options = {}, region = nil)
       @username          = username
       @password          = password
       @address           = address
       @port              = port || 5000
       @api_version       = api_version || 'v2'
+      @region            = region
       @security_protocol = security_protocol || 'ssl'
       @extra_options     = extra_options
 
@@ -137,10 +143,12 @@ module OpenstackHandle
     end
 
     def connect(options = {})
+      $fog_log.warn("MIQ(#{self.class.name}##{__method__}) fogfog.region=#{@region} fogfog.options=#{options.inspect} ")
       opts     = options.dup
       service  = (opts.delete(:service) || "Compute").to_s.camelize
       tenant   = opts.delete(:tenant_name)
       domain   = domain_id
+      region   = @region
 
       # Do not send auth_type to fog, it throws warning
       opts.delete(:auth_type)
@@ -148,6 +156,11 @@ module OpenstackHandle
       unless tenant
         tenant = "any_tenant" if service == "Identity"
         tenant ||= default_tenant_name
+      end
+
+      if service == "Storage"
+        opts[:openstack_region] = 'ams5' if address == 'api.cloud.ebpi.nl' 
+        opts[:openstack_region] = 'ams5' if address == '172.20.4.11' 
       end
 
       unless service == "Identity"
@@ -164,7 +177,7 @@ module OpenstackHandle
         opts[:ssl_options]        = ssl_options
 
         raw_service = self.class.raw_connect_try_ssl(username, password, address, port, service, opts, api_version,
-                                                     security_protocol)
+                                                     security_protocol, region)
         service_wrapper_name = "#{service}Delegate"
         # Allow openstack to define new services without explicitly requiring a
         # service wrapper.

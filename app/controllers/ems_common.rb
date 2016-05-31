@@ -598,6 +598,7 @@ module EmsCommon
     @edit[:new][:emstype] = @ems.emstype
     @edit[:amazon_regions] = get_regions('Amazon') if @ems.kind_of?(ManageIQ::Providers::Amazon::CloudManager)
     @edit[:google_regions] = get_regions('Google') if @ems.kind_of?(ManageIQ::Providers::Google::CloudManager)
+    @edit[:openstack_regions] = get_regions('Openstack') if @ems.kind_of?(ManageIQ::Providers::Openstack::CloudManager)
     @edit[:new][:port] = @ems.port
     @edit[:new][:api_version] = @ems.api_version
     @edit[:new][:provider_id] = @ems.provider_id
@@ -678,7 +679,7 @@ module EmsCommon
       @server_zones.push([zone.description, zone.name])
     end
     @ems_types = Array(model.supported_types_and_descriptions_hash.invert).sort_by(&:first)
-    @amazon_regions, @azure_regions, @google_regions = %w(Amazon Azure Google).map do |provider_name|
+    @amazon_regions, @azure_regions, @google_regions, @openstack_regions = %w(Amazon Azure Google Openstack).map do |provider_name|
       get_regions(provider_name)
     end
     @openstack_infra_providers = retrieve_openstack_infra_providers

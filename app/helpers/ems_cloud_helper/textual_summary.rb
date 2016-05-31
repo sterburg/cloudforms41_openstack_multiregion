@@ -29,7 +29,7 @@ module EmsCloudHelper::TextualSummary
   def textual_provider_region
     return nil if @ems.provider_region.nil?
     label_val = (@ems.type.include? "Google") ? _("Preferred Region") : _("Region")
-    {:label => label_val, :value => @ems.description}
+    {:label => label_val, :value => @ems.kind_of?(ManageIQ::Providers::Openstack::CloudManager) ? @ems.provider_region : @ems.description }
   end
 
   def textual_keystone_v3_domain_id

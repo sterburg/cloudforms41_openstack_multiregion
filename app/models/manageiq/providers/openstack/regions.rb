@@ -2,6 +2,10 @@ module ManageIQ
   module Providers::Openstack
     module Regions
       REGIONS = {
+        "RegionOne" => {
+          :name        => "regionOne",
+          :description => "regionOne",
+        },
         "ams5" => {
           :name        => "ams5",
           :description => "AMS5",
